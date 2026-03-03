@@ -47,6 +47,10 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -62,6 +66,18 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        sans: ["Manrope", "ui-sans-serif", "system-ui"],
+        display: ["STIX Two Text", "serif"],
+      },
+      boxShadow: {
+        neon: "var(--shadow-neon)",
+        glass: "var(--shadow-glass)",
+      },
+      backgroundImage: {
+        "gradient-brand": "var(--gradient-brand)",
+        "hero-overlay": "var(--gradient-hero-overlay)",
       },
       keyframes: {
         "accordion-down": {
