@@ -1,6 +1,7 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductEditorDialog from "@/components/admin/ProductEditorDialog";
+import ProviderManager from "@/components/admin/ProviderManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,6 +85,13 @@ const Admin = () => {
     const user = loginWithCredentials(username, password);
     if (!user) {
       setLoginError("Credenciales inválidas.");
+      return;
+    }
+
+    // Only Super Admin can access this panel
+    if (user.id !== SUPER_ADMIN_ID) {
+      setLoginError("Solo el Super Admin puede acceder a este panel.");
+      clearSession();
       return;
     }
 
@@ -234,8 +242,9 @@ const Admin = () => {
     return (
       <main className="relative min-h-screen bg-background px-4 py-16">
         <div className="mx-auto w-full max-w-md rounded-2xl border border-border/60 bg-card/70 p-6 backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Ruta oculta</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Acceso restringido</p>
           <h1 className="font-display mt-2 text-3xl text-foreground">Panel Admin</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Solo el Super Admin puede acceder a esta ruta.</p>
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="admin-user">Usuario</Label>
@@ -243,7 +252,7 @@ const Admin = () => {
                 id="admin-user"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="gusstore123"
+                placeholder="Usuario del Super Admin"
               />
             </div>
             <div className="space-y-2">
@@ -298,6 +307,7 @@ const Admin = () => {
         <Tabs defaultValue="products" className="space-y-4">
           <TabsList>
             <TabsTrigger value="products">Productos</TabsTrigger>
+            {isSuperAdmin && <TabsTrigger value="providers">Proveedores</TabsTrigger>}
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
           </TabsList>
 
@@ -377,6 +387,13 @@ const Admin = () => {
               ))}
             </section>
           </TabsContent>
+
+          {isSuperAdmin && (
+            <TabsContent value="providers">
+              <ProviderManager />
+            </TabsContent>
+          )}
+
 
           <TabsContent value="profile">
             <section className="glass-card rounded-2xl p-5 space-y-5">

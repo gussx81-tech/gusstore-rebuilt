@@ -32,15 +32,22 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <span className={`rounded-full border px-2 py-1 text-[10px] font-medium ${stockClasses}`}>{product.stock}</span>
         </div>
 
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <span>{isSuperAdminProduct ? "Gusstore" : product.ownerName}</span>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          {product.ownerLogo ? (
+            <img src={product.ownerLogo} alt="" className="h-4 w-4 rounded-full object-cover border border-border" />
+          ) : (
+            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-muted text-[8px] font-bold text-muted-foreground">
+              {(isSuperAdminProduct ? "G" : (product.ownerName || product.ownerUsername || "?").charAt(0)).toUpperCase()}
+            </div>
+          )}
+          <span>{isSuperAdminProduct ? "Gusstore" : (product.ownerName || product.ownerUsername || "Proveedor")}</span>
           {isSuperAdminProduct && <BadgeCheck className="h-3.5 w-3.5 text-primary" aria-label="Proveedor verificado" />}
         </div>
 
         <p className="text-base font-bold text-primary">S/ {product.price.toFixed(2)}</p>
 
         <Button asChild className="w-full bg-gradient-brand text-primary-foreground shadow-neon transition-transform hover:scale-[1.02]">
-          <a href={createWhatsAppUrl(product.name, product.price, product.ownerPhone)} target="_blank" rel="noreferrer">
+          <a href={createWhatsAppUrl(product.name, product.price, product.ownerPhone, product.ownerName)} target="_blank" rel="noreferrer">
             Pedir por WhatsApp
           </a>
         </Button>

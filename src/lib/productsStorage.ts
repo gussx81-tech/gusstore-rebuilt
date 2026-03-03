@@ -23,7 +23,7 @@ export const createWhatsAppUrl = (productName: string, productPrice: number, own
   const safePhone = ownerPhone?.replace(/\D/g, "") || SUPER_ADMIN_PHONE;
 
   let cleanName = "";
-  if (ownerName && ownerName !== "undefined" && ownerName !== "null") {
+  if (ownerName && ownerName !== "undefined" && ownerName !== "null" && ownerName.trim()) {
     cleanName = ownerName.trim();
   }
 
@@ -35,10 +35,14 @@ export const createWhatsAppUrl = (productName: string, productPrice: number, own
     cleanName === SUPER_ADMIN_USERNAME
   );
 
-  const finalGreetingName = isMainAdmin ? "Gusstore" : cleanName;
-  const webReference = isMainAdmin ? "tu web Gus Store" : "la web Gus Store";
-
-  const message = `Hola ${finalGreetingName}, vengo de ${webReference}. Quiero la cuenta de ${productName} de S/ ${productPrice.toFixed(2)}. ¿A dónde te Yapeo?`;
+  let message: string;
+  if (isMainAdmin) {
+    message = `Hola Gusstore, vengo de tu web Gus Store. Quiero la cuenta de ${productName} de S/ ${productPrice.toFixed(2)}. ¿A dónde te Yapeo?`;
+  } else if (cleanName) {
+    message = `Hola ${cleanName}, vengo de la web Gus Store. Quiero la cuenta de ${productName} de S/ ${productPrice.toFixed(2)}. ¿A dónde te Yapeo?`;
+  } else {
+    message = `Hola, vengo de la web Gus Store. Quiero la cuenta de ${productName} de S/ ${productPrice.toFixed(2)}. ¿A dónde te Yapeo?`;
+  }
 
   return `${BASE_WHATSAPP_DOMAIN}/${safePhone}?text=${encodeURIComponent(message)}`;
 };
