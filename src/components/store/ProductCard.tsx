@@ -47,7 +47,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
         <p className="text-base font-bold text-primary">S/ {product.price.toFixed(2)}</p>
 
         <Button asChild className="w-full bg-gradient-brand text-primary-foreground shadow-neon transition-transform hover:scale-[1.02]">
-          <a href={createWhatsAppUrl(product.name, product.price, product.ownerPhone)} target="_blank" rel="noreferrer">
+          <a href={createWhatsAppUrl(product.name, product.price, product.ownerPhone, product.ownerName)} target="_blank" rel="noreferrer">
             Pedir por WhatsApp
           </a>
         </Button>
