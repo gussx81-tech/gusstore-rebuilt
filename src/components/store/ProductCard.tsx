@@ -13,7 +13,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
       ? "border-success/40 bg-success/20 text-success"
       : "border-destructive/40 bg-destructive/20 text-destructive";
 
-  const isSuperAdminProduct = product.ownerUsername === "Guss81";
+  // VALIDACIÓN REFORZADA: Si es Guss81 o super-admin, es el jefe.
+  const isSuperAdminProduct = 
+    product.ownerUsername === "Guss81" || 
+    product.ownerId === "super-admin-id" || 
+    product.ownerName === "Gusstore";
 
   return (
     <article className="glass-card group overflow-hidden rounded-2xl p-2 transition-transform duration-300 hover:-translate-y-1">
@@ -33,15 +37,28 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </div>
 
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          {product.ownerLogo ? (
-            <img src={product.ownerLogo} alt="" className="h-4 w-4 rounded-full object-cover border border-border" />
+          {/* Logo del dueño o logo por defecto de Gusstore */}
+          {product.ownerLogo || isSuperAdminProduct ? (
+            <img 
+              src={product.ownerLogo || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&h=100&fit=crop"} 
+              alt="" 
+              className="h-4 w-4 rounded-full object-cover border border-border" 
+            />
           ) : (
             <div className="flex h-4 w-4 items-center justify-center rounded-full bg-muted text-[8px] font-bold text-muted-foreground">
-              {(isSuperAdminProduct ? "G" : (product.ownerName || product.ownerUsername || "?").charAt(0)).toUpperCase()}
+              {(product.ownerName || product.ownerUsername || "?").charAt(0).toUpperCase()}
             </div>
           )}
-          <span>{isSuperAdminProduct ? "Gusstore" : (product.ownerName || product.ownerUsername || "Proveedor")}</span>
-          {isSuperAdminProduct && <BadgeCheck className="h-3.5 w-3.5 text-primary" aria-label="Proveedor verificado" />}
+
+          {/* Nombre: Si es el jefe, siempre dice Gusstore */}
+          <span className="font-medium text-foreground">
+            {isSuperAdminProduct ? "Gusstore" : (product.ownerName || product.ownerUsername || "Proveedor")}
+          </span>
+
+          {/* EL CHECK DE VERIFICACIÓN: Solo para ti */}
+          {isSuperAdminProduct && (
+            <BadgeCheck className="h-3.5 w-3.5 text-primary fill-primary/10" aria-label="Proveedor verificado" />
+          )}
         </div>
 
         <p className="text-base font-bold text-primary">S/ {product.price.toFixed(2)}</p>
