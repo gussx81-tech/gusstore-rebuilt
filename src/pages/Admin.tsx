@@ -72,6 +72,7 @@ const Admin = () => {
 
   const visibleProducts = useMemo(() => {
     if (!sessionUser) return [];
+    // Si es Super Admin ve todo, si no, solo lo que le pertenece
     return isSuperAdmin ? products : products.filter((product) => product.ownerId === sessionUser.id);
   }, [products, isSuperAdmin, sessionUser]);
 
@@ -88,13 +89,7 @@ const Admin = () => {
       return;
     }
 
-    // Only Super Admin can access this panel
-    if (user.id !== SUPER_ADMIN_ID) {
-      setLoginError("Solo el Super Admin puede acceder a este panel.");
-      clearSession();
-      return;
-    }
-
+    // CORRECCIÓN: Ahora cualquier usuario registrado puede entrar, no solo el Super Admin
     setSessionUser(user);
     setLoginError("");
     setUsername("");
@@ -242,9 +237,9 @@ const Admin = () => {
     return (
       <main className="relative min-h-screen bg-background px-4 py-16">
         <div className="mx-auto w-full max-w-md rounded-2xl border border-border/60 bg-card/70 p-6 backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Acceso restringido</p>
-          <h1 className="font-display mt-2 text-3xl text-foreground">Panel Admin</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Solo el Super Admin puede acceder a esta ruta.</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Panel de Control</p>
+          <h1 className="font-display mt-2 text-3xl text-foreground">Gestión Gusstore</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Ingresa para administrar tus servicios.</p>
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="admin-user">Usuario</Label>
@@ -252,7 +247,7 @@ const Admin = () => {
                 id="admin-user"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Usuario del Super Admin"
+                placeholder="Nombre de usuario"
               />
             </div>
             <div className="space-y-2">
@@ -267,7 +262,7 @@ const Admin = () => {
             </div>
             {loginError && <p className="text-sm text-destructive">{loginError}</p>}
             <Button type="submit" className="w-full bg-gradient-brand text-primary-foreground shadow-neon">
-              Entrar
+              Entrar al panel
             </Button>
           </form>
         </div>
@@ -281,10 +276,10 @@ const Admin = () => {
         <header className="glass-card rounded-2xl p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Gestión interna</p>
-              <h1 className="font-display text-3xl">Dashboard Gusstore.lat</h1>
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Dashboard</p>
+              <h1 className="font-display text-3xl">Gusstore.lat</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                {visibleProducts.length} productos · {totalStock} disponibles
+                {visibleProducts.length} productos gestionados · {totalStock} disponibles
               </p>
             </div>
             <div className="flex gap-2">
@@ -321,7 +316,7 @@ const Admin = () => {
 
             {isSuperAdmin && (
               <section className="glass-card rounded-2xl p-5 space-y-4">
-                <Label htmlFor="new-category">Categorías</Label>
+                <Label htmlFor="new-category">Categorías Globales</Label>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     id="new-category"
@@ -402,18 +397,18 @@ const Admin = () => {
               {!isSuperAdmin && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="profile-name">Nombre del proveedor</Label>
+                    <Label htmlFor="profile-name">Nombre Comercial</Label>
                     <Input id="profile-name" value={profileName} onChange={(e) => setProfileName(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="profile-phone">Celular</Label>
+                    <Label htmlFor="profile-phone">WhatsApp de Ventas</Label>
                     <Input id="profile-phone" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} />
                   </div>
                 </div>
               )}
 
               <div className="space-y-3">
-                <Label htmlFor="profile-logo">Foto / logo</Label>
+                <Label htmlFor="profile-logo">Logo / Avatar</Label>
                 <div className="flex items-center gap-3">
                   <div className="h-14 w-14 overflow-hidden rounded-full border border-border bg-card">
                     {profileLogo ? (
@@ -426,24 +421,24 @@ const Admin = () => {
                 </div>
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" onClick={handleSaveProfile}>
-                    Editar
+                    Guardar Perfil
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
                       setProfileLogo("");
-                      setProfileMessage("Foto eliminada. Presiona Editar para guardar.");
+                      setProfileMessage("Foto eliminada temporalmente. Guarda para confirmar.");
                     }}
                   >
-                    Eliminar
+                    Quitar Foto
                   </Button>
                 </div>
                 {profileMessage && <p className="text-sm text-muted-foreground">{profileMessage}</p>}
               </div>
 
               <form onSubmit={handlePasswordChange} className="space-y-3 border-t border-border pt-4">
-                <h3 className="text-base font-semibold">Cambiar contraseña</h3>
+                <h3 className="text-base font-semibold">Seguridad</h3>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="current-password">Contraseña Actual</Label>
@@ -459,7 +454,7 @@ const Admin = () => {
                     <Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirmar Nueva Contraseña</Label>
+                    <Label htmlFor="confirm-password">Repetir Nueva</Label>
                     <Input
                       id="confirm-password"
                       type="password"
@@ -470,7 +465,7 @@ const Admin = () => {
                 </div>
                 {passwordMessage && <p className="text-sm text-muted-foreground">{passwordMessage}</p>}
                 <Button type="submit" className="bg-gradient-brand text-primary-foreground shadow-neon">
-                  Actualizar contraseña
+                  Cambiar Contraseña
                 </Button>
               </form>
             </section>
