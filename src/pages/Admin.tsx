@@ -70,9 +70,9 @@ const Admin = () => {
 
   const isSuperAdmin = sessionUser?.id === SUPER_ADMIN_ID;
 
+  // Filtrado de vista: Cada uno ve lo suyo, el Super Admin ve todo.
   const visibleProducts = useMemo(() => {
     if (!sessionUser) return [];
-    // Si es Super Admin ve todo, si no, solo lo que le pertenece
     return isSuperAdmin ? products : products.filter((product) => product.ownerId === sessionUser.id);
   }, [products, isSuperAdmin, sessionUser]);
 
@@ -88,8 +88,6 @@ const Admin = () => {
       setLoginError("Credenciales inválidas.");
       return;
     }
-
-    // CORRECCIÓN: Ahora cualquier usuario registrado puede entrar, no solo el Super Admin
     setSessionUser(user);
     setLoginError("");
     setUsername("");
@@ -99,8 +97,10 @@ const Admin = () => {
   const handleSaveProduct = (product: Product) => {
     if (!sessionUser) return;
 
-    const normalizedProduct = isSuperAdmin
-      ? product
+    // Si eres Super Admin, mantenemos los datos originales si existen.
+    // Si eres Admin normal, forzamos tus datos de proveedor.
+    const normalizedProduct = isSuperAdmin && product.ownerId 
+      ? { ...product } 
       : {
           ...product,
           ownerId: sessionUser.id,
@@ -123,7 +123,9 @@ const Admin = () => {
     const target = products.find((product) => product.id === id);
     if (!target || !sessionUser) return;
 
+    // PROTECCIÓN: Solo el dueño o el Super Admin pueden borrar una tarjeta específica.
     if (!isSuperAdmin && target.ownerId !== sessionUser.id) {
+      alert("No tienes permiso para eliminar este servicio.");
       return;
     }
 
@@ -144,10 +146,8 @@ const Admin = () => {
 
   const handleDeleteCategory = (categoryToDelete: string) => {
     if (!isSuperAdmin) return;
-
     const remaining = categories.filter((category) => category !== categoryToDelete);
     if (!remaining.length) return;
-
     setCategories(remaining);
     setProducts((prev) =>
       prev.map((product) =>
@@ -166,17 +166,13 @@ const Admin = () => {
   const handleProfileLogoUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onload = () => {
-      setProfileLogo(String(reader.result || ""));
-    };
+    reader.onload = () => setProfileLogo(String(reader.result || ""));
     reader.readAsDataURL(file);
   };
 
   const handleSaveProfile = () => {
     if (!sessionUser) return;
-
     const updates = isSuperAdmin
       ? { logo: profileLogo || undefined }
       : {
@@ -187,7 +183,7 @@ const Admin = () => {
 
     const updated = updateUserProfile(sessionUser.id, updates);
     if (!updated) {
-      setProfileMessage("No se pudo actualizar el perfil.");
+      setProfileMessage("Error al actualizar perfil.");
       return;
     }
 
@@ -195,10 +191,8 @@ const Admin = () => {
     setProducts((prev) =>
       prev.map((product) => {
         if (product.ownerId !== sessionUser.id) return product;
-
         const ownerName = isSuperAdmin ? SUPER_ADMIN_PROVIDER_NAME : updated.providerName;
         const ownerPhone = isSuperAdmin ? SUPER_ADMIN_PHONE : updated.phone;
-
         return {
           ...product,
           ownerName,
@@ -208,25 +202,21 @@ const Admin = () => {
         };
       }),
     );
-
     setProfileMessage("Perfil actualizado correctamente.");
   };
 
   const handlePasswordChange = (event: FormEvent) => {
     event.preventDefault();
     if (!sessionUser) return;
-
     if (newPassword !== confirmPassword) {
-      setPasswordMessage("La nueva contraseña y la confirmación no coinciden.");
+      setPasswordMessage("Las contraseñas no coinciden.");
       return;
     }
-
     const result = updateUserPassword(sessionUser.id, currentPassword, newPassword);
     if (!result.ok) {
-      setPasswordMessage(result.error || "No se pudo actualizar la contraseña.");
+      setPasswordMessage(result.error || "Error al actualizar.");
       return;
     }
-
     setPasswordMessage("Contraseña actualizada.");
     setCurrentPassword("");
     setNewPassword("");
@@ -237,33 +227,19 @@ const Admin = () => {
     return (
       <main className="relative min-h-screen bg-background px-4 py-16">
         <div className="mx-auto w-full max-w-md rounded-2xl border border-border/60 bg-card/70 p-6 backdrop-blur-xl">
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Panel de Control</p>
-          <h1 className="font-display mt-2 text-3xl text-foreground">Gestión Gusstore</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Ingresa para administrar tus servicios.</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Panel Admin</p>
+          <h1 className="font-display mt-2 text-3xl text-foreground">Gusstore.lat</h1>
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="admin-user">Usuario</Label>
-              <Input
-                id="admin-user"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Nombre de usuario"
-              />
+              <Label>Usuario</Label>
+              <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Tu usuario" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="admin-password">Contraseña</Label>
-              <Input
-                id="admin-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
+              <Label>Contraseña</Label>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
             </div>
             {loginError && <p className="text-sm text-destructive">{loginError}</p>}
-            <Button type="submit" className="w-full bg-gradient-brand text-primary-foreground shadow-neon">
-              Entrar al panel
-            </Button>
+            <Button type="submit" className="w-full bg-gradient-brand shadow-neon">Entrar al panel</Button>
           </form>
         </div>
       </main>
@@ -271,30 +247,21 @@ const Admin = () => {
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 sm:px-6 lg:px-10">
+    <main className="min-h-screen bg-background px-4 py-8">
       <section className="mx-auto w-full max-w-6xl space-y-6">
         <header className="glass-card rounded-2xl p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Dashboard</p>
-              <h1 className="font-display text-3xl">Gusstore.lat</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {visibleProducts.length} productos gestionados · {totalStock} disponibles
+              <h1 className="font-display text-3xl">Dashboard</h1>
+              <p className="text-sm text-muted-foreground">
+                {visibleProducts.length} servicios · {totalStock} disponibles
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
-                onClick={() => {
-                  setActiveProduct(null);
-                  setDialogOpen(true);
-                }}
-                className="bg-gradient-brand text-primary-foreground shadow-neon"
-              >
+              <Button onClick={() => { setActiveProduct(null); setDialogOpen(true); }} className="bg-gradient-brand shadow-neon">
                 Nuevo producto
               </Button>
-              <Button variant="outline" onClick={handleLogout}>
-                Salir
-              </Button>
+              <Button variant="outline" onClick={handleLogout}>Salir</Button>
             </div>
           </div>
         </header>
@@ -308,42 +275,12 @@ const Admin = () => {
 
           <TabsContent value="products" className="space-y-6">
             {isSuperAdmin && (
-              <section className="glass-card rounded-2xl p-5">
-                <Label htmlFor="announcement">Texto del banner de ofertas</Label>
-                <Input id="announcement" value={announcement} onChange={(e) => setAnnouncement(e.target.value)} className="mt-2" />
-              </section>
-            )}
-
-            {isSuperAdmin && (
               <section className="glass-card rounded-2xl p-5 space-y-4">
-                <Label htmlFor="new-category">Categorías Globales</Label>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    id="new-category"
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    placeholder="Ej: Streaming"
-                  />
-                  <Button type="button" onClick={handleAddCategory} className="bg-gradient-brand text-primary-foreground shadow-neon">
-                    Crear categoría
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((category) => (
-                    <div key={category} className="flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-sm">
-                      <span>{category}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-muted-foreground hover:text-foreground"
-                        onClick={() => handleDeleteCategory(category)}
-                        disabled={categories.length === 1}
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  ))}
+                <Label>Banner y Categorías Globales</Label>
+                <Input value={announcement} onChange={(e) => setAnnouncement(e.target.value)} placeholder="Banner de ofertas" />
+                <div className="flex gap-2">
+                  <Input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} placeholder="Nueva categoría" />
+                  <Button onClick={handleAddCategory}>Crear</Button>
                 </div>
               </section>
             )}
@@ -352,31 +289,17 @@ const Admin = () => {
               {visibleProducts.map((product) => (
                 <article key={product.id} className="glass-card rounded-2xl p-4">
                   <div className="flex items-start gap-3">
-                    <img src={product.image} alt={product.name} className="h-20 w-20 rounded-lg border object-cover" />
-                    <div className="min-w-0 flex-1">
-                      <h2 className="truncate text-base font-semibold">{product.name}</h2>
-                      <p className="text-sm text-muted-foreground">S/ {product.price.toFixed(2)}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {product.stock} · {product.category}
-                      </p>
-                      {isSuperAdmin && (
-                        <p className="mt-1 text-xs text-muted-foreground">Proveedor: {product.ownerName}</p>
-                      )}
+                    <img src={product.image} className="h-20 w-20 rounded-lg border object-cover" />
+                    <div className="flex-1">
+                      <h2 className="font-semibold">{product.name}</h2>
+                      <p className="text-sm font-bold text-primary">S/ {product.price.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">{product.stock} · {product.category}</p>
+                      {isSuperAdmin && <p className="text-[10px] text-primary">Dueño: {product.ownerName}</p>}
                     </div>
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setActiveProduct(product);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      Editar
-                    </Button>
-                    <Button variant="outline" onClick={() => handleDeleteProduct(product.id)}>
-                      Eliminar tarjeta
-                    </Button>
+                    <Button variant="outline" onClick={() => { setActiveProduct(product); setDialogOpen(true); }}>Editar</Button>
+                    <Button variant="outline" onClick={() => handleDeleteProduct(product.id)}>Eliminar</Button>
                   </div>
                 </article>
               ))}
@@ -389,84 +312,30 @@ const Admin = () => {
             </TabsContent>
           )}
 
-
           <TabsContent value="profile">
             <section className="glass-card rounded-2xl p-5 space-y-5">
-              <h2 className="font-display text-2xl">Mi Perfil</h2>
-
+              <h2 className="font-display text-2xl">Ajustes de Perfil</h2>
               {!isSuperAdmin && (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="profile-name">Nombre Comercial</Label>
-                    <Input id="profile-name" value={profileName} onChange={(e) => setProfileName(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="profile-phone">WhatsApp de Ventas</Label>
-                    <Input id="profile-phone" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} />
-                  </div>
+                  <Input placeholder="Nombre Comercial" value={profileName} onChange={(e) => setProfileName(e.target.value)} />
+                  <Input placeholder="WhatsApp" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} />
                 </div>
               )}
-
-              <div className="space-y-3">
-                <Label htmlFor="profile-logo">Logo / Avatar</Label>
-                <div className="flex items-center gap-3">
-                  <div className="h-14 w-14 overflow-hidden rounded-full border border-border bg-card">
-                    {profileLogo ? (
-                      <img src={profileLogo} alt="Avatar de usuario" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Sin foto</div>
-                    )}
-                  </div>
-                  <Input id="profile-logo" type="file" accept="image/*" onChange={handleProfileLogoUpload} className="max-w-xs" />
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-14 overflow-hidden rounded-full border bg-card">
+                  {profileLogo ? <img src={profileLogo} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs">Sin foto</div>}
                 </div>
-                <div className="flex gap-2">
-                  <Button type="button" variant="outline" onClick={handleSaveProfile}>
-                    Guardar Perfil
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setProfileLogo("");
-                      setProfileMessage("Foto eliminada temporalmente. Guarda para confirmar.");
-                    }}
-                  >
-                    Quitar Foto
-                  </Button>
-                </div>
-                {profileMessage && <p className="text-sm text-muted-foreground">{profileMessage}</p>}
+                <Input type="file" accept="image/*" onChange={handleProfileLogoUpload} className="max-w-xs" />
               </div>
+              <Button onClick={handleSaveProfile}>Guardar Cambios</Button>
 
-              <form onSubmit={handlePasswordChange} className="space-y-3 border-t border-border pt-4">
-                <h3 className="text-base font-semibold">Seguridad</h3>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="current-password">Contraseña Actual</Label>
-                    <Input
-                      id="current-password"
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password">Nueva Contraseña</Label>
-                    <Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Repetir Nueva</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                  </div>
-                </div>
-                {passwordMessage && <p className="text-sm text-muted-foreground">{passwordMessage}</p>}
-                <Button type="submit" className="bg-gradient-brand text-primary-foreground shadow-neon">
-                  Cambiar Contraseña
-                </Button>
+              <form onSubmit={handlePasswordChange} className="border-t pt-4 space-y-3">
+                <h3 className="font-semibold">Seguridad</h3>
+                <Input type="password" placeholder="Contraseña Actual" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+                <Input type="password" placeholder="Nueva Contraseña" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                <Input type="password" placeholder="Repetir Nueva" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                <Button type="submit" variant="secondary">Actualizar Contraseña</Button>
+                {passwordMessage && <p className="text-xs">{passwordMessage}</p>}
               </form>
             </section>
           </TabsContent>
