@@ -182,36 +182,41 @@ const Admin = () => {
 
   const handleSaveProfile = () => {
     if (!sessionUser) return;
-    const updates = isSuperAdmin
-      ? { logo: profileLogo || undefined }
-      : {
-          providerName: profileName,
-          phone: profilePhone,
-          logo: profileLogo || undefined,
-        };
+    try {
+      const updates = isSuperAdmin
+        ? { logo: profileLogo || undefined }
+        : {
+            providerName: profileName,
+            phone: profilePhone,
+            logo: profileLogo || undefined,
+          };
 
-    const updated = updateUserProfile(sessionUser.id, updates);
-    if (!updated) {
-      setProfileMessage("Error al actualizar perfil.");
-      return;
+      const updated = updateUserProfile(sessionUser.id, updates);
+      if (!updated) {
+        setProfileMessage("Error al actualizar perfil.");
+        return;
+      }
+
+      setSessionUser(updated);
+      setProducts((prev) =>
+        prev.map((product) => {
+          if (product.ownerId !== sessionUser.id) return product;
+          const ownerName = isSuperAdmin ? SUPER_ADMIN_PROVIDER_NAME : updated.providerName;
+          const ownerPhone = isSuperAdmin ? SUPER_ADMIN_PHONE : updated.phone;
+          return {
+            ...product,
+            ownerName,
+            ownerPhone,
+            ownerLogo: updated.logo,
+            whatsappUrl: createWhatsAppUrl(product.name, product.price, ownerPhone),
+          };
+        }),
+      );
+      setProfileMessage("Perfil actualizado correctamente.");
+    } catch (e) {
+      console.error("Error saving profile:", e);
+      setProfileMessage("Error: la imagen es demasiado grande. Intenta con una foto más pequeña.");
     }
-
-    setSessionUser(updated);
-    setProducts((prev) =>
-      prev.map((product) => {
-        if (product.ownerId !== sessionUser.id) return product;
-        const ownerName = isSuperAdmin ? SUPER_ADMIN_PROVIDER_NAME : updated.providerName;
-        const ownerPhone = isSuperAdmin ? SUPER_ADMIN_PHONE : updated.phone;
-        return {
-          ...product,
-          ownerName,
-          ownerPhone,
-          ownerLogo: updated.logo,
-          whatsappUrl: createWhatsAppUrl(product.name, product.price, ownerPhone),
-        };
-      }),
-    );
-    setProfileMessage("Perfil actualizado correctamente.");
   };
 
   const handlePasswordChange = (event: FormEvent) => {
