@@ -24,6 +24,7 @@ import {
   saveCategories,
   saveProducts,
 } from "@/lib/productsStorage";
+import { compressImage } from "@/lib/compressImage";
 import type { Product } from "@/types/product";
 import type { AppUser } from "@/types/user";
 
@@ -163,13 +164,21 @@ const Admin = () => {
     setPasswordMessage("");
   };
 
-  const handleProfileLogoUpload = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleProfileLogoUpload = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => setProfileLogo(String(reader.result || ""));
+    reader.onload = async () => {
+      try {
+        const raw = String(reader.result || "");
+        const compressed = await compressImage(raw, 200, 200, 0.7);
+        setProfileLogo(compressed);
+      } catch {
+        setProfileLogo(String(reader.result || ""));
+      }
+    };
     reader.readAsDataURL(file);
-  };
+  }, []);
 
   const handleSaveProfile = () => {
     if (!sessionUser) return;
