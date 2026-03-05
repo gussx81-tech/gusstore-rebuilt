@@ -120,7 +120,11 @@ export const saveCategories = (categories: string[]) => {
 };
 
 export const saveProducts = (products: Product[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+  } catch (e) {
+    console.error("Error saving products to localStorage:", e);
+  }
 };
 
 export const loadAnnouncement = (): string => {

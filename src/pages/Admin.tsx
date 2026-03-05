@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ProductEditorDialog from "@/components/admin/ProductEditorDialog";
 import ProviderManager from "@/components/admin/ProviderManager";
@@ -24,6 +24,7 @@ import {
   saveCategories,
   saveProducts,
 } from "@/lib/productsStorage";
+import { compressImage } from "@/lib/compressImage";
 import type { Product } from "@/types/product";
 import type { AppUser } from "@/types/user";
 
@@ -163,46 +164,59 @@ const Admin = () => {
     setPasswordMessage("");
   };
 
-  const handleProfileLogoUpload = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleProfileLogoUpload = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => setProfileLogo(String(reader.result || ""));
+    reader.onload = async () => {
+      try {
+        const raw = String(reader.result || "");
+        const compressed = await compressImage(raw, 200, 200, 0.7);
+        setProfileLogo(compressed);
+      } catch {
+        setProfileLogo(String(reader.result || ""));
+      }
+    };
     reader.readAsDataURL(file);
-  };
+  }, []);
 
   const handleSaveProfile = () => {
     if (!sessionUser) return;
-    const updates = isSuperAdmin
-      ? { logo: profileLogo || undefined }
-      : {
-          providerName: profileName,
-          phone: profilePhone,
-          logo: profileLogo || undefined,
-        };
+    try {
+      const updates = isSuperAdmin
+        ? { logo: profileLogo || undefined }
+        : {
+            providerName: profileName,
+            phone: profilePhone,
+            logo: profileLogo || undefined,
+          };
 
-    const updated = updateUserProfile(sessionUser.id, updates);
-    if (!updated) {
-      setProfileMessage("Error al actualizar perfil.");
-      return;
+      const updated = updateUserProfile(sessionUser.id, updates);
+      if (!updated) {
+        setProfileMessage("Error al actualizar perfil.");
+        return;
+      }
+
+      setSessionUser(updated);
+      setProducts((prev) =>
+        prev.map((product) => {
+          if (product.ownerId !== sessionUser.id) return product;
+          const ownerName = isSuperAdmin ? SUPER_ADMIN_PROVIDER_NAME : updated.providerName;
+          const ownerPhone = isSuperAdmin ? SUPER_ADMIN_PHONE : updated.phone;
+          return {
+            ...product,
+            ownerName,
+            ownerPhone,
+            ownerLogo: updated.logo,
+            whatsappUrl: createWhatsAppUrl(product.name, product.price, ownerPhone),
+          };
+        }),
+      );
+      setProfileMessage("Perfil actualizado correctamente.");
+    } catch (e) {
+      console.error("Error saving profile:", e);
+      setProfileMessage("Error: la imagen es demasiado grande. Intenta con una foto más pequeña.");
     }
-
-    setSessionUser(updated);
-    setProducts((prev) =>
-      prev.map((product) => {
-        if (product.ownerId !== sessionUser.id) return product;
-        const ownerName = isSuperAdmin ? SUPER_ADMIN_PROVIDER_NAME : updated.providerName;
-        const ownerPhone = isSuperAdmin ? SUPER_ADMIN_PHONE : updated.phone;
-        return {
-          ...product,
-          ownerName,
-          ownerPhone,
-          ownerLogo: updated.logo,
-          whatsappUrl: createWhatsAppUrl(product.name, product.price, ownerPhone),
-        };
-      }),
-    );
-    setProfileMessage("Perfil actualizado correctamente.");
   };
 
   const handlePasswordChange = (event: FormEvent) => {
