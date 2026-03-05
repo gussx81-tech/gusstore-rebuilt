@@ -25,9 +25,8 @@ const RegisterAdminProvider = () => {
 
     setError("");
     
-    // Aquí te manda a la ruta principal de tu panel. 
-    // Si tu panel está en otra ruta (ej: "/dashboard"), cambia el "/" por esa ruta.
-    navigate("/"); 
+    // Aquí te manda a la ruta para registrar. ¡Cambia el "/register" si tu ruta es distinta!
+    navigate("/register"); 
   };
 
   return (
