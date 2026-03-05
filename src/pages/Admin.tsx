@@ -251,11 +251,22 @@ const Admin = () => {
       <section className="mx-auto w-full max-w-6xl space-y-6">
         <header className="glass-card rounded-2xl p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="font-display text-3xl">Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 overflow-hidden rounded-full border-2 border-primary/40 bg-card">
+                {sessionUser.logo ? (
+                  <img src={sessionUser.logo} alt="Avatar" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-lg font-bold text-primary">
+                    {(sessionUser.providerName || sessionUser.username || "?").charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div>
+                <h1 className="font-display text-3xl">Dashboard</h1>
               <p className="text-sm text-muted-foreground">
                 {visibleProducts.length} servicios · {totalStock} disponibles
               </p>
+              </div>
             </div>
             <div className="flex gap-2">
               <Button onClick={() => { setActiveProduct(null); setDialogOpen(true); }} className="bg-gradient-brand shadow-neon">
