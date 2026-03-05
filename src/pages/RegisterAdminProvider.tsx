@@ -17,13 +17,17 @@ const RegisterAdminProvider = () => {
     event.preventDefault();
     const user = loginWithCredentials(username, password);
 
-    if (!user || user.id !== SUPER_ADMIN_ID) {
-      setError("Acceso restringido. Solo el administrador principal puede ingresar.");
+    // Verificamos que el usuario exista y que tenga rol de admin (normal o super admin)
+    if (!user || (user.role !== "admin" && user.id !== SUPER_ADMIN_ID)) {
+      setError("Acceso restringido. Solo administradores pueden ingresar.");
       return;
     }
 
     setError("");
-    navigate("/admin");
+    
+    // Aquí te manda a la ruta principal de tu panel. 
+    // Si tu panel está en otra ruta (ej: "/dashboard"), cambia el "/" por esa ruta.
+    navigate("/"); 
   };
 
   return (
