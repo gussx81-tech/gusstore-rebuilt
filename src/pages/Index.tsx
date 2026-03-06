@@ -1,30 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
 import HeroSection from "@/components/store/HeroSection";
 import ProductCard from "@/components/store/ProductCard";
-import { loadAnnouncement, loadCategories, loadProducts } from "@/lib/productsStorage";
+import { fetchProducts, loadAnnouncement, loadCategories } from "@/lib/productsStorage";
 import type { Product } from "@/types/product";
 
 const ALL_FILTER = "Todos";
 
 const Index = () => {
-  const [products, setProducts] = useState<Product[]>(() => loadProducts());
+  const [products, setProducts] = useState<Product[]>([]);
   const [announcement, setAnnouncement] = useState(() => loadAnnouncement());
   const [categories, setCategories] = useState<string[]>(() => loadCategories());
   const [activeCategory, setActiveCategory] = useState(ALL_FILTER);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const syncData = () => {
-      setProducts(loadProducts());
+    const load = async () => {
+      setLoading(true);
+      const data = await fetchProducts();
+      setProducts(data);
+      setLoading(false);
+    };
+    load();
+
+    const syncLocal = () => {
       setAnnouncement(loadAnnouncement());
       setCategories(loadCategories());
     };
 
-    window.addEventListener("storage", syncData);
-    window.addEventListener("focus", syncData);
+    window.addEventListener("storage", syncLocal);
+    window.addEventListener("focus", () => {
+      syncLocal();
+      load();
+    });
 
     return () => {
-      window.removeEventListener("storage", syncData);
-      window.removeEventListener("focus", syncData);
+      window.removeEventListener("storage", syncLocal);
+      window.removeEventListener("focus", syncLocal);
     };
   }, []);
 
@@ -103,11 +114,25 @@ const Index = () => {
           <p className="text-sm text-muted-foreground">{availableProducts} disponibles</p>
         </section>
 
-        <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </section>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="mb-4 text-6xl">📭</div>
+            <h3 className="font-display text-2xl text-foreground">AÚN NO HAY NADA AQUÍ</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Los productos aparecerán cuando el administrador los publique.
+            </p>
+          </div>
+        ) : (
+          <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            {filteredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </section>
+        )}
       </main>
 
       <footer className="border-t border-border/40 bg-card/30 backdrop-blur-sm py-6">
