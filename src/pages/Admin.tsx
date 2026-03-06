@@ -17,19 +17,20 @@ import {
 } from "@/lib/authStorage";
 import {
   createWhatsAppUrl,
+  deleteProductFromDb,
+  fetchProducts,
   loadAnnouncement,
   loadCategories,
-  loadProducts,
   saveAnnouncement,
   saveCategories,
-  saveProducts,
+  saveProductToDb,
 } from "@/lib/productsStorage";
 import { compressImage } from "@/lib/compressImage";
 import type { Product } from "@/types/product";
 import type { AppUser } from "@/types/user";
 
 const Admin = () => {
-  const [products, setProducts] = useState<Product[]>(() => loadProducts());
+  const [products, setProducts] = useState<Product[]>([]);
   const [announcement, setAnnouncement] = useState(() => loadAnnouncement());
   const [categories, setCategories] = useState<string[]>(() => loadCategories());
   const [newCategory, setNewCategory] = useState("");
@@ -57,9 +58,15 @@ const Admin = () => {
     setProfileLogo(sessionUser.logo || "");
   }, [sessionUser]);
 
+  // Load products from Supabase
   useEffect(() => {
-    saveProducts(products);
-  }, [products]);
+    if (!sessionUser) return;
+    const load = async () => {
+      const data = await fetchProducts();
+      setProducts(data);
+    };
+    load();
+  }, [sessionUser]);
 
   useEffect(() => {
     saveAnnouncement(announcement);
@@ -71,7 +78,6 @@ const Admin = () => {
 
   const isSuperAdmin = sessionUser?.id === SUPER_ADMIN_ID;
 
-  // Filtrado de vista: Cada uno ve lo suyo, el Super Admin ve todo.
   const visibleProducts = useMemo(() => {
     if (!sessionUser) return [];
     return isSuperAdmin ? products : products.filter((product) => product.ownerId === sessionUser.id);
@@ -95,11 +101,9 @@ const Admin = () => {
     setPassword("");
   };
 
-  const handleSaveProduct = (product: Product) => {
+  const handleSaveProduct = async (product: Product) => {
     if (!sessionUser) return;
 
-    // Si eres Super Admin, mantenemos los datos originales si existen.
-    // Si eres Admin normal, forzamos tus datos de proveedor.
     const normalizedProduct = isSuperAdmin && product.ownerId 
       ? { ...product } 
       : {
@@ -112,28 +116,33 @@ const Admin = () => {
           whatsappUrl: createWhatsAppUrl(product.name, product.price, sessionUser.phone),
         };
 
-    setProducts((prev) => {
-      const exists = prev.some((item) => item.id === normalizedProduct.id);
-      return exists
-        ? prev.map((item) => (item.id === normalizedProduct.id ? normalizedProduct : item))
-        : [normalizedProduct, ...prev];
-    });
+    const ok = await saveProductToDb(normalizedProduct);
+    if (ok) {
+      setProducts((prev) => {
+        const exists = prev.some((item) => item.id === normalizedProduct.id);
+        return exists
+          ? prev.map((item) => (item.id === normalizedProduct.id ? normalizedProduct : item))
+          : [normalizedProduct, ...prev];
+      });
+    }
   };
 
-  const handleDeleteProduct = (id: string) => {
+  const handleDeleteProduct = async (id: string) => {
     const target = products.find((product) => product.id === id);
     if (!target || !sessionUser) return;
 
-    // PROTECCIÓN: Solo el dueño o el Super Admin pueden borrar una tarjeta específica.
     if (!isSuperAdmin && target.ownerId !== sessionUser.id) {
       alert("No tienes permiso para eliminar este servicio.");
       return;
     }
 
     if (confirm("¿Estás seguro de que quieres eliminar esta tarjeta?")) {
-      setProducts((prev) => prev.filter((product) => product.id !== id));
-      setDialogOpen(false);
-      setActiveProduct(null);
+      const ok = await deleteProductFromDb(id);
+      if (ok) {
+        setProducts((prev) => prev.filter((product) => product.id !== id));
+        setDialogOpen(false);
+        setActiveProduct(null);
+      }
     }
   };
 
@@ -150,11 +159,6 @@ const Admin = () => {
     const remaining = categories.filter((category) => category !== categoryToDelete);
     if (!remaining.length) return;
     setCategories(remaining);
-    setProducts((prev) =>
-      prev.map((product) =>
-        product.category === categoryToDelete ? { ...product, category: remaining[0] } : product,
-      ),
-    );
   };
 
   const handleLogout = () => {
@@ -198,23 +202,8 @@ const Admin = () => {
       }
 
       setSessionUser(updated);
-      setProducts((prev) =>
-        prev.map((product) => {
-          if (product.ownerId !== sessionUser.id) return product;
-          const ownerName = isSuperAdmin ? SUPER_ADMIN_PROVIDER_NAME : updated.providerName;
-          const ownerPhone = isSuperAdmin ? SUPER_ADMIN_PHONE : updated.phone;
-          return {
-            ...product,
-            ownerName,
-            ownerPhone,
-            ownerLogo: updated.logo,
-            whatsappUrl: createWhatsAppUrl(product.name, product.price, ownerPhone),
-          };
-        }),
-      );
       setProfileMessage("Perfil actualizado correctamente.");
     } catch (e) {
-      console.error("Error saving profile:", e);
       setProfileMessage("Error: la imagen es demasiado grande. Intenta con una foto más pequeña.");
     }
   };
@@ -310,25 +299,35 @@ const Admin = () => {
               </section>
             )}
 
-            <section className="grid gap-4 md:grid-cols-2">
-              {visibleProducts.map((product) => (
-                <article key={product.id} className="glass-card rounded-2xl p-4">
-                  <div className="flex items-start gap-3">
-                    <img src={product.image} className="h-20 w-20 rounded-lg border object-cover" />
-                    <div className="flex-1">
-                      <h2 className="font-semibold">{product.name}</h2>
-                      <p className="text-sm font-bold text-primary">S/ {product.price.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">{product.stock} · {product.category}</p>
-                      {isSuperAdmin && <p className="text-[10px] text-primary">Dueño: {product.ownerName}</p>}
+            {visibleProducts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="mb-4 text-5xl">📭</div>
+                <h3 className="font-display text-xl text-foreground">AÚN NO HAY NADA AQUÍ</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Crea tu primer producto con el botón "Nuevo producto".
+                </p>
+              </div>
+            ) : (
+              <section className="grid gap-4 md:grid-cols-2">
+                {visibleProducts.map((product) => (
+                  <article key={product.id} className="glass-card rounded-2xl p-4">
+                    <div className="flex items-start gap-3">
+                      <img src={product.image} className="h-20 w-20 rounded-lg border object-cover" />
+                      <div className="flex-1">
+                        <h2 className="font-semibold">{product.name}</h2>
+                        <p className="text-sm font-bold text-primary">S/ {product.price.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">{product.stock} · {product.category}</p>
+                        {isSuperAdmin && <p className="text-[10px] text-primary">Dueño: {product.ownerName}</p>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <Button variant="outline" onClick={() => { setActiveProduct(product); setDialogOpen(true); }}>Editar</Button>
-                    <Button variant="outline" onClick={() => handleDeleteProduct(product.id)}>Eliminar</Button>
-                  </div>
-                </article>
-              ))}
-            </section>
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <Button variant="outline" onClick={() => { setActiveProduct(product); setDialogOpen(true); }}>Editar</Button>
+                      <Button variant="outline" onClick={() => handleDeleteProduct(product.id)}>Eliminar</Button>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            )}
           </TabsContent>
 
           {isSuperAdmin && (
